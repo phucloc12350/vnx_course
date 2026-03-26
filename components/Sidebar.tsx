@@ -7,13 +7,32 @@ import {
   BookOutlined,
   SettingOutlined,
   TrophyOutlined,
+  ReadOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
 const { Option } = Select;
 const { Text } = Typography;
 
-const AppSidebar = ({ level, setLevel, weakness, setWeakness }: any) => {
+export type PageKey = 'co-minh' | 'tu-dien';
+
+interface AppSidebarProps {
+  level: string;
+  setLevel: (v: string) => void;
+  weakness: string;
+  setWeakness: (v: string) => void;
+  activePage: PageKey;
+  setActivePage: (page: PageKey) => void;
+}
+
+const AppSidebar = ({
+  level,
+  setLevel,
+  weakness,
+  setWeakness,
+  activePage,
+  setActivePage,
+}: AppSidebarProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
@@ -41,24 +60,27 @@ const AppSidebar = ({ level, setLevel, weakness, setWeakness }: any) => {
       >
         Lớp Tiếng Anh
       </div>
+
       <Menu
         mode="inline"
-        defaultSelectedKeys={['1']}
+        selectedKeys={[activePage]}
         onClick={(e) => {
           if (e.key === 'levels') {
             setIsModalOpen(true);
+          } else if (e.key === 'co-minh' || e.key === 'tu-dien') {
+            setActivePage(e.key as PageKey);
           }
         }}
         items={[
           {
-            key: '1',
+            key: 'co-minh',
             icon: <MessageOutlined />,
             label: 'Cô Minh English',
           },
           {
-            key: '2',
-            icon: <BookOutlined />,
-            label: 'Bài tập Ngữ pháp',
+            key: 'tu-dien',
+            icon: <ReadOutlined />,
+            label: 'Từ Điển Cô Lành',
           },
           {
             key: 'levels',
@@ -66,7 +88,7 @@ const AppSidebar = ({ level, setLevel, weakness, setWeakness }: any) => {
             label: 'Chọn trình độ',
           },
           {
-            key: '3',
+            key: 'settings',
             icon: <SettingOutlined />,
             label: 'Cài đặt',
           },

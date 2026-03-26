@@ -35,7 +35,6 @@ export default function ChatWindow({ level, weakness }: ChatWindowProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Cuộn dòng tin nhắn đến cuối cùng khi có tin nhắn mới
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -46,9 +45,10 @@ export default function ChatWindow({ level, weakness }: ChatWindowProps) {
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#f0f2f5',
       }}
     >
+      {/* Header — full width */}
       <div
         style={{
           padding: '16px 24px',
@@ -61,15 +61,24 @@ export default function ChatWindow({ level, weakness }: ChatWindowProps) {
         </Title>
       </div>
 
+      {/* Messages area — scrollable, content centered at 800px */}
       <div
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '24px',
-          maxHeight: 'calc(100vh - 135px)',
+          padding: '24px 16px',
+          maxHeight: 'calc(100vh - 133px)',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div
+          style={{
+            maxWidth: 800,
+            margin: '0 auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}
+        >
           {messages.map((msg, index) => {
             const isUser = msg.role === 'user';
             return (
@@ -78,7 +87,7 @@ export default function ChatWindow({ level, weakness }: ChatWindowProps) {
                 style={{
                   display: 'flex',
                   justifyContent: isUser ? 'flex-end' : 'flex-start',
-                  padding: '8px 0',
+                  padding: '6px 0',
                 }}
               >
                 <div
@@ -86,45 +95,47 @@ export default function ChatWindow({ level, weakness }: ChatWindowProps) {
                     display: 'flex',
                     flexDirection: isUser ? 'row-reverse' : 'row',
                     alignItems: 'flex-start',
-                    maxWidth: '80%',
+                    maxWidth: '78%',
                   }}
                 >
                   <Avatar
                     icon={isUser ? <UserOutlined /> : <RobotOutlined />}
                     style={{
                       backgroundColor: isUser ? '#1890ff' : '#52c41a',
-                      marginLeft: isUser ? '12px' : '0',
-                      marginRight: isUser ? '0' : '12px',
+                      flexShrink: 0,
+                      marginLeft: isUser ? '10px' : '0',
+                      marginRight: isUser ? '0' : '10px',
                     }}
                   />
                   <div
                     style={{
                       padding: '12px 16px',
-                      borderRadius: '16px',
+                      borderRadius: isUser ? '18px 4px 18px 18px' : '4px 18px 18px 18px',
                       backgroundColor: isUser ? '#1890ff' : '#ffffff',
                       color: isUser ? '#fff' : '#000',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-                      whiteSpace: 'pre-wrap',
-                      lineHeight: '1.5',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                      lineHeight: '1.6',
                     }}
                   >
                     {msg.parts?.filter((p: any) => p.type === 'text').map((p: any, i: number) => (
-                      <ReactMarkdown 
+                      <ReactMarkdown
                         key={i}
                         components={{
-                          p: ({node, ...props}) => <div style={{ marginBottom: '8px', display: 'inline-block' }} {...props} />,
-                          strong: ({node, ...props}) => (
-                            <strong 
-                              style={{ 
-                                color: isUser ? '#fff' : '#f5222d', 
-                                fontWeight: 600, 
+                          p: ({ node, ...props }) => (
+                            <div style={{ marginBottom: '6px' }} {...props} />
+                          ),
+                          strong: ({ node, ...props }) => (
+                            <strong
+                              style={{
+                                color: isUser ? '#fff' : '#f5222d',
+                                fontWeight: 600,
                                 backgroundColor: isUser ? 'transparent' : '#fff1f0',
-                                padding: '2px 4px',
-                                borderRadius: '4px'
-                              }} 
-                              {...props} 
+                                padding: '1px 5px',
+                                borderRadius: '5px',
+                              }}
+                              {...props}
                             />
-                          )
+                          ),
                         }}
                       >
                         {p.text}
@@ -135,13 +146,24 @@ export default function ChatWindow({ level, weakness }: ChatWindowProps) {
               </div>
             );
           })}
+
           {error && (
-            <div style={{ textAlign: 'center', color: '#ff4d4f', padding: '12px', margin: '8px 0', border: '1px solid #ffa39e', borderRadius: '8px', backgroundColor: '#fff2f0' }}>
+            <div
+              style={{
+                textAlign: 'center',
+                color: '#ff4d4f',
+                padding: '14px 18px',
+                margin: '8px 0',
+                border: '1px solid #ffa39e',
+                borderRadius: '12px',
+                backgroundColor: '#fff2f0',
+              }}
+            >
               <strong>⚠️ Lỗi Hệ Thống:</strong>
               <div style={{ marginTop: '8px', fontSize: '13px' }}>
-                {error.message.includes('Quota exceeded') || error.message.includes('429') 
+                {error.message.includes('Quota exceeded') || error.message.includes('429')
                   ? 'API Key Gemini của bạn đã hết hạn mức truy cập miễn phí. Vui lòng thử lại sau vài phút hoặc thay API Key khác trong file .env.local nhé!'
-                  : ('Chi tiết lỗi: ' + error.message)}
+                  : 'Chi tiết lỗi: ' + error.message}
               </div>
             </div>
           )}
@@ -149,37 +171,46 @@ export default function ChatWindow({ level, weakness }: ChatWindowProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      <div style={{ padding: '16px 24px', background: '#fff', borderTop: '1px solid #e8e8e8' }}>
-        <form
-          onSubmit={(e) => {
-            if (!input.trim()) {
-              e.preventDefault();
-              return;
-            }
-            handleSubmit(e);
-          }}
-          style={{ display: 'flex', gap: '12px' }}
-        >
-          <Input
-            value={input}
-            onChange={handleInputChange}
-            placeholder="Type your message here..."
-            disabled={isLoading}
-            size="large"
-            autoFocus
-            style={{ borderRadius: '8px' }}
-          />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            size="large"
-            disabled={isLoading || !input.trim()}
-            htmlType="submit"
-            style={{ borderRadius: '8px', minWidth: '100px' }}
+      {/* Input bar — full width background, content centered at 800px */}
+      <div
+        style={{
+          background: '#fff',
+          borderTop: '1px solid #e8e8e8',
+          padding: '14px 16px',
+        }}
+      >
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <form
+            onSubmit={(e) => {
+              if (!input.trim()) {
+                e.preventDefault();
+                return;
+              }
+              handleSubmit(e);
+            }}
+            style={{ display: 'flex', gap: '10px' }}
           >
-            {isLoading ? 'Đang soạn...' : 'Gửi'}
-          </Button>
-        </form>
+            <Input
+              value={input}
+              onChange={handleInputChange}
+              placeholder="Type your message here..."
+              disabled={isLoading}
+              size="large"
+              autoFocus
+              style={{ borderRadius: '10px' }}
+            />
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              size="large"
+              disabled={isLoading || !input.trim()}
+              htmlType="submit"
+              style={{ borderRadius: '10px', minWidth: '100px' }}
+            >
+              {isLoading ? 'Đang soạn...' : 'Gửi'}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );
