@@ -10,14 +10,19 @@ import {
   Descriptions,
   Skeleton,
   message,
-  List,
   Divider,
   Space,
 } from 'antd';
 import { SearchOutlined, BookOutlined, BulbOutlined } from '@ant-design/icons';
 import type { WordDefinition } from '@/types/dictionary';
+import ReactMarkdown from 'react-markdown';
 
 const { Title, Text } = Typography;
+
+const dictMarkdownComponents = {
+  p: ({ node, ...props }: any) => <span {...props} />,
+  strong: ({ node, ...props }: any) => <strong style={{ color: '#722ed1', fontWeight: 600 }} {...props} />,
+};
 
 const LEVEL_COLOR: Record<string, string> = {
   'Dễ': 'success',
@@ -199,13 +204,15 @@ export default function DictionaryWindow() {
                 bordered
                 size="middle"
                 style={{ marginBottom: 20 }}
-                labelStyle={{ fontWeight: 600, backgroundColor: '#f9f0ff', width: 140 }}
+                styles={{ label: { fontWeight: 600, backgroundColor: '#f9f0ff', width: 140 } }}
               >
                 <Descriptions.Item label="📝 Nghĩa">
                   <Text style={{ fontSize: 15 }}>{result.meaning}</Text>
                 </Descriptions.Item>
                 <Descriptions.Item label="💬 Ví dụ">
-                  <Text style={{ fontSize: 15, fontStyle: 'italic' }}>{result.example}</Text>
+                  <div style={{ fontSize: 15, fontStyle: 'italic' }}>
+                    <ReactMarkdown components={dictMarkdownComponents}>{result.example}</ReactMarkdown>
+                  </div>
                 </Descriptions.Item>
               </Descriptions>
 
@@ -213,10 +220,9 @@ export default function DictionaryWindow() {
               <Divider style={{ color: '#722ed1', borderColor: '#d3adf7' }}>
                 <BulbOutlined /> Lưu ý Ngữ pháp
               </Divider>
-              <List
-                dataSource={result.grammar_notes}
-                renderItem={(note, idx) => (
-                  <List.Item style={{ paddingLeft: 0, paddingRight: 0, borderColor: '#f0f0f0' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {result.grammar_notes.map((note, idx) => (
+                  <div key={idx} style={{ paddingBottom: 16, borderBottom: idx < result.grammar_notes.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
                     <Space align="start">
                       <Tag
                         color="purple"
@@ -224,11 +230,13 @@ export default function DictionaryWindow() {
                       >
                         {idx + 1}
                       </Tag>
-                      <Text>{note}</Text>
+                      <div style={{ marginTop: 2 }}>
+                        <ReactMarkdown components={dictMarkdownComponents}>{note}</ReactMarkdown>
+                      </div>
                     </Space>
-                  </List.Item>
-                )}
-              />
+                  </div>
+                ))}
+              </div>
             </Card>
           )}
 

@@ -21,17 +21,19 @@ export async function POST(req: Request) {
   const { object } = await generateObject({
     model: google('gemini-2.5-flash'),
     schema: wordSchema,
-    prompt: `Bạn là "Cô Lành" - một cuốn từ điển sống có phong cách cực kỳ hài hước, hơi nhây bựa nhưng kiến thức ngôn ngữ thì cực chuẩn.
-    
-Hãy phân tích từ tiếng Anh: "${word.trim()}"
+    temperature: 0.4,
+    prompt: `Bạn là "Cô Lành" – một giáo viên tiếng Anh thân thiện, giải thích dễ hiểu, đôi lúc dí dỏm nhẹ nhưng vẫn rõ ràng và chuyên nghiệp.
 
-Yêu cầu đặc biệt:
-- "meaning": Giải thích nghĩa bằng tiếng Việt theo kiểu Cô Lành: hài hước, có thể dùng ví von buồn cười, nhưng vẫn đúng nghĩa.
-- "example": Câu ví dụ tiếng Anh có tình huống đời thực hơi nhây hoặc vui vẻ, kèm bản dịch tiếng Việt trong ngoặc.
-- "grammar_notes": Ít nhất 2-3 lưu ý ngữ pháp thực tế (ví dụ: loại từ, cách dùng, cụm từ thường gặp, lỗi hay mắc).
-- "level": Đánh giá độ khó phù hợp với học sinh Việt Nam học tiếng Anh.
+Phân tích từ tiếng Anh: "${word.trim()}"
 
-Trả về đúng định dạng JSON yêu cầu.`,
+Yêu cầu:
+- "meaning": Giải thích nghĩa tiếng Việt ngắn gọn, dễ hiểu. Có thể thêm chút ví von nhẹ nhàng nhưng không lan man.
+- "example": Một câu ví dụ tiếng Anh tự nhiên trong đời sống. Bắt buộc in đậm từ vựng "${word.trim()}" trong câu tiếng Anh (bằng cách bọc trong hai dấu sao như thế này: **từ vựng**). Thêm bản dịch tiếng Việt trong ngoặc.
+- "grammar_notes": 3–5 lưu ý ngữ pháp quan trọng và thực tế. Mỗi lưu ý bắt buộc phải bắt đầu bằng một tiêu đề loại từ vựng đi kèm dấu hai chấm được **in đậm** bằng markdown (ví dụ: "**Loại từ và dạng số nhiều:** 'Theme' là danh từ...").
+- Trình bày súc tích, ưu tiên tính chính xác và dễ học.
+- "level": Đánh giá độ khó phù hợp với người Việt học tiếng Anh.
+
+Trả về đúng JSON theo schema, không thêm giải thích ngoài JSON.`,
   });
 
   return Response.json(object);
