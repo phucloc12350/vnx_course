@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
 import ReactMarkdown from 'react-markdown';
 import { Input, Button, Avatar, Typography, Modal, Select } from 'antd';
@@ -42,11 +42,30 @@ const botMarkdownComponents = {
   ),
 };
 
-export default function ChatWindow() {
+interface ChatWindowProps {
+  initialMessages?: any[];
+  onMessagesUpdate?: (messages: any[]) => void;
+}
+
+export default function ChatWindow({ initialMessages, onMessagesUpdate }: ChatWindowProps = {}) {
   const { level, setLevel, weakness, setWeakness } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { messages, sendMessage, status, error } = useChat();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chatOptions: any = initialMessages?.length ? { initialMessages } : {};
+  const { messages, sendMessage, status, error } = useChat(chatOptions);
+
+  // Lưu lịch sử sau khi AI trả lời xong
+  const prevStatusRef = useRef(status);
+  useEffect(() => {
+    const wasLoading =
+      prevStatusRef.current === 'submitted' || prevStatusRef.current === 'streaming';
+    const isDone = status !== 'submitted' && status !== 'streaming';
+    if (wasLoading && isDone && messages.length > 0 && onMessagesUpdate) {
+      onMessagesUpdate(messages);
+    }
+    prevStatusRef.current = status;
+  }, [status, messages, onMessagesUpdate]);
 
   const [input, setInput] = useState('');
   const isLoading = status === 'submitted' || status === 'streaming';

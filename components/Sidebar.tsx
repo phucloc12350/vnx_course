@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
-import { Layout, Menu } from 'antd';
+import React, { useState } from 'react';
+import { Layout, Menu, Button } from 'antd';
 import {
   MessageOutlined,
-  SettingOutlined,
   ReadOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -14,11 +14,18 @@ const { Sider } = Layout;
 const AppSidebar = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   let activePage = 'co-minh';
   if (pathname.includes('/tu-dien-co-lanh')) {
     activePage = 'tu-dien';
   }
+
+  const handleLogout = async () => {
+    setLogoutLoading(true);
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+  };
 
   return (
     <Sider
@@ -28,10 +35,12 @@ const AppSidebar = () => {
       style={{
         height: '100vh',
         borderRight: '1px solid #f0f0f0',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
+      {/* Logo */}
       <div
-        className="logo"
         style={{
           height: '64px',
           display: 'flex',
@@ -41,39 +50,59 @@ const AppSidebar = () => {
           fontWeight: 'bold',
           color: '#1890ff',
           borderBottom: '1px solid #f0f0f0',
+          flexShrink: 0,
         }}
       >
         Lớp Tiếng Anh
       </div>
 
-      <Menu
-        mode="inline"
-        selectedKeys={[activePage]}
-        onClick={(e) => {
-          if (e.key === 'co-minh') {
-            router.push('/chat-co-minh');
-          } else if (e.key === 'tu-dien') {
-            router.push('/tu-dien-co-lanh');
-          }
+      {/* Menu navigation */}
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        <Menu
+          mode="inline"
+          selectedKeys={[activePage]}
+          style={{ borderRight: 0 }}
+          onClick={(e) => {
+            if (e.key === 'co-minh') {
+              router.push('/chat-co-minh');
+            } else if (e.key === 'tu-dien') {
+              router.push('/tu-dien-co-lanh');
+            }
+          }}
+          items={[
+            {
+              key: 'co-minh',
+              icon: <MessageOutlined />,
+              label: 'Cô Minh English',
+            },
+            {
+              key: 'tu-dien',
+              icon: <ReadOutlined />,
+              label: 'Từ Điển Cô Lành',
+            },
+          ]}
+        />
+      </div>
+
+      {/* Logout button — ghim ở đáy */}
+      <div
+        style={{
+          padding: '12px 16px',
+          borderTop: '1px solid #f0f0f0',
+          flexShrink: 0,
         }}
-        items={[
-          {
-            key: 'co-minh',
-            icon: <MessageOutlined />,
-            label: 'Cô Minh English',
-          },
-          {
-            key: 'tu-dien',
-            icon: <ReadOutlined />,
-            label: 'Từ Điển Cô Lành',
-          },
-          {
-            key: 'settings',
-            icon: <SettingOutlined />,
-            label: 'Cài đặt',
-          },
-        ]}
-      />
+      >
+        <Button
+          icon={<LogoutOutlined />}
+          loading={logoutLoading}
+          onClick={handleLogout}
+          block
+          danger
+          style={{ borderRadius: 10 }}
+        >
+          Đăng xuất
+        </Button>
+      </div>
     </Sider>
   );
 };
