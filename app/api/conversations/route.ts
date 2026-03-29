@@ -1,45 +1,56 @@
 import { NextResponse } from 'next/server';
 import { getSql, ensureTables } from '@/lib/db';
 
-// GET /api/conversations — lấy danh sách conversations + messages
+// GET /api/conversations
 export async function GET() {
   try {
     await ensureTables();
     const sql = getSql();
 
-    const rows = await sql`
+    // Lấy conversations
+    const conversations = await sql`
       SELECT
-        c.id,
-        c.title,
-        c.created_at  AS "createdAt",
-        c.updated_at  AS "updatedAt",
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id',        m.id,
-              'role',      m.role,
-              'content',   m.content,
-              'createdAt', m.created_at
-            )
-            ORDER BY m.created_at ASC
-          ) FILTER (WHERE m.id IS NOT NULL),
-          '[]'
-        ) AS messages
-      FROM conversations c
-      LEFT JOIN messages m ON m.conversation_id = c.id
-      WHERE c.user_id = 'admin'
-      GROUP BY c.id
-      ORDER BY c.updated_at DESC
+        id,
+        title,
+        created_at AS "createdAt",
+        updated_at AS "updatedAt"
+      FROM conversations
+      WHERE user_id = 'admin'
+      ORDER BY updated_at DESC
     `;
 
-    return NextResponse.json(rows);
-  } catch (err) {
+    if (conversations.length === 0) {
+      return NextResponse.json([]);
+    }
+
+    // Lấy tất cả messages của các conversations trên
+    const convIds = conversations.map((c) => c.id);
+    const messages = await sql`
+      SELECT id, conversation_id AS "conversationId", role, content, created_at AS "createdAt"
+      FROM messages
+      WHERE conversation_id = ANY(${convIds})
+      ORDER BY created_at ASC
+    `;
+
+    // Gắn messages vào đúng conversation
+    const result = conversations.map((conv) => ({
+      ...conv,
+      messages: messages
+        .filter((m) => m.conversationId === conv.id)
+        .map(({ conversationId: _cid, ...m }) => m),
+    }));
+
+    return NextResponse.json(result);
+  } catch (err: any) {
     console.error('[GET /api/conversations]', err);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message ?? 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
 
-// POST /api/conversations — tạo conversation mới
+// POST /api/conversations
 export async function POST(req: Request) {
   try {
     await ensureTables();
@@ -58,8 +69,11 @@ export async function POST(req: Request) {
     `;
 
     return NextResponse.json({ ...conv, messages: [] }, { status: 201 });
-  } catch (err) {
+  } catch (err: any) {
     console.error('[POST /api/conversations]', err);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message ?? 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }

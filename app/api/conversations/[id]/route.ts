@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSql, ensureTables } from '@/lib/db';
 
-// PUT /api/conversations/[id] — cập nhật messages + title
+// PUT /api/conversations/[id]
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -20,45 +20,48 @@ export async function PUT(
       ? firstUser.content.slice(0, 45) + (firstUser.content.length > 45 ? '...' : '')
       : null;
 
-    await sql`
-      UPDATE conversations
-      SET
-        updated_at = NOW(),
-        title = CASE
-          WHEN title = 'Cuộc trò chuyện mới' AND ${titleFromMsg} IS NOT NULL
-          THEN ${titleFromMsg}
-          ELSE title
-        END
-      WHERE id = ${id} AND user_id = 'admin'
-    `;
+    // Cập nhật title + updated_at
+    if (titleFromMsg) {
+      await sql`
+        UPDATE conversations
+        SET
+          updated_at = NOW(),
+          title = CASE
+            WHEN title = 'Cuộc trò chuyện mới' THEN ${titleFromMsg}
+            ELSE title
+          END
+        WHERE id = ${id} AND user_id = 'admin'
+      `;
+    } else {
+      await sql`
+        UPDATE conversations
+        SET updated_at = NOW()
+        WHERE id = ${id} AND user_id = 'admin'
+      `;
+    }
 
+    // Xoá messages cũ rồi insert lại
     await sql`DELETE FROM messages WHERE conversation_id = ${id}`;
 
-    if (messages.length > 0) {
-      for (const m of messages) {
-        await sql`
-          INSERT INTO messages (id, conversation_id, role, content, created_at)
-          VALUES (
-            ${m.id},
-            ${id},
-            ${m.role},
-            ${m.content},
-            ${m.createdAt}
-          )
-          ON CONFLICT (id) DO UPDATE
-            SET content = EXCLUDED.content
-        `;
-      }
+    for (const m of messages) {
+      await sql`
+        INSERT INTO messages (id, conversation_id, role, content, created_at)
+        VALUES (${m.id}, ${id}, ${m.role}, ${m.content}, ${m.createdAt})
+        ON CONFLICT (id) DO UPDATE SET content = EXCLUDED.content
+      `;
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err) {
+  } catch (err: any) {
     console.error('[PUT /api/conversations/[id]]', err);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message ?? 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
 
-// DELETE /api/conversations/[id] — xoá conversation (messages xoá cascade)
+// DELETE /api/conversations/[id]
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -73,8 +76,11 @@ export async function DELETE(
     `;
 
     return NextResponse.json({ ok: true });
-  } catch (err) {
+  } catch (err: any) {
     console.error('[DELETE /api/conversations/[id]]', err);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message ?? 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
