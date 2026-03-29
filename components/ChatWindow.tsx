@@ -52,7 +52,7 @@ export default function ChatWindow({ initialMessages, onMessagesUpdate }: ChatWi
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chatOptions: any = initialMessages?.length ? { initialMessages } : {};
+  const chatOptions: any = initialMessages?.length ? { messages: initialMessages } : {};
   const { messages, sendMessage, status, error } = useChat(chatOptions);
 
   // Lưu lịch sử sau khi AI trả lời xong
