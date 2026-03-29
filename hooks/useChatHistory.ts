@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Conversation, StoredMessage } from '@/types/chat';
 
+const STORAGE_KEY = 'vnx-co-minh-conversations';
+
 /** Chuyển message từ AI SDK format sang StoredMessage để lưu */
 export function messagesToStored(msgs: any[]): StoredMessage[] {
   return msgs
@@ -36,53 +38,46 @@ export function useChatHistory() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  // Load conversations từ API khi mount
   useEffect(() => {
-    fetch('/api/conversations')
-      .then((r) => r.json())
-      .then((data: Conversation[]) => {
-        setConversations(Array.isArray(data) ? data : []);
-      })
-      .catch(() => setConversations([]))
-      .finally(() => setHydrated(true));
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed: Conversation[] = raw ? JSON.parse(raw) : [];
+      setConversations(parsed);
+    } catch {
+      setConversations([]);
+    }
+    setHydrated(true);
+  }, []);
+
+  const persist = useCallback((convs: Conversation[]) => {
+    setConversations(convs);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(convs));
   }, []);
 
   const createConversation = useCallback(
     (firstMessage?: string): Conversation => {
-      const id = crypto.randomUUID();
       const title = firstMessage
         ? firstMessage.slice(0, 45) + (firstMessage.length > 45 ? '...' : '')
         : 'Cuộc trò chuyện mới';
-
       const newConv: Conversation = {
-        id,
+        id: crypto.randomUUID(),
         title,
         messages: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-
-      // Cập nhật UI ngay (optimistic update)
-      setConversations((prev) => [newConv, ...prev]);
-      setActiveId(id);
-
-      // Lưu vào DB (fire and forget)
-      fetch('/api/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, title }),
-      }).catch((err) => console.error('[createConversation]', err));
-
+      const updated = [newConv, ...conversations];
+      persist(updated);
+      setActiveId(newConv.id);
       return newConv;
     },
-    []
+    [conversations, persist]
   );
 
   const updateConversation = useCallback(
     (convId: string, messages: StoredMessage[]) => {
-      // Cập nhật UI ngay (optimistic update)
-      setConversations((prev) =>
-        prev.map((c) => {
+      setConversations((prev) => {
+        const updated = prev.map((c) => {
           if (c.id !== convId) return c;
           const firstUser = messages.find((m) => m.role === 'user');
           const title =
@@ -90,31 +85,28 @@ export function useChatHistory() {
               ? firstUser.content.slice(0, 45) + (firstUser.content.length > 45 ? '...' : '')
               : c.title;
           return { ...c, title, messages, updatedAt: new Date().toISOString() };
-        })
-      );
-
-      // Lưu vào DB (fire and forget)
-      fetch(`/api/conversations/${convId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages }),
-      }).catch((err) => console.error('[updateConversation]', err));
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
     },
     []
   );
 
   const deleteConversation = useCallback(
     (convId: string) => {
-      // Cập nhật UI ngay (optimistic update)
-      setConversations((prev) => prev.filter((c) => c.id !== convId));
-      setActiveId((prev) => (prev === convId ? null : prev));
-
-      // Xoá trong DB (fire and forget)
-      fetch(`/api/conversations/${convId}`, { method: 'DELETE' }).catch((err) =>
-        console.error('[deleteConversation]', err)
-      );
+      setConversations((prev) => {
+        const updated = prev.filter((c) => c.id !== convId);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+      setActiveId((prev) => {
+        if (prev !== convId) return prev;
+        const remaining = conversations.filter((c) => c.id !== convId);
+        return remaining[0]?.id ?? null;
+      });
     },
-    []
+    [conversations]
   );
 
   const activeConversation = conversations.find((c) => c.id === activeId) ?? null;
