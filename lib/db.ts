@@ -7,8 +7,7 @@ if (!process.env.DATABASE_URL) {
 export const sql = neon(process.env.DATABASE_URL);
 
 /**
- * Tạo bảng nếu chưa tồn tại (chạy khi server khởi động lần đầu).
- * An toàn để gọi nhiều lần nhờ CREATE TABLE IF NOT EXISTS.
+ * Tạo bảng nếu chưa tồn tại (chạy khi server khởi động lần đầu). 
  */
 export async function ensureTables() {
   await sql`
