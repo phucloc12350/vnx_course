@@ -1,15 +1,28 @@
 import { neon } from '@neondatabase/serverless';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is not set');
+/**
+ * Trả về Neon SQL client.
+ * Gọi bên trong handler (không phải top-level) để tránh lỗi build trên Vercel
+ * khi env vars chưa được inject lúc compile time.
+ * Hỗ trợ cả DATABASE_URL (Neon trực tiếp) và POSTGRES_URL (Vercel Postgres).
+ */
+export function getSql() {
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!url) {
+    throw new Error(
+      'DATABASE_URL is not set. Thêm vào Vercel → Settings → Environment Variables.'
+    );
+  }
+  return neon(url);
 }
 
-export const sql = neon(process.env.DATABASE_URL);
-
 /**
- * Tạo bảng nếu chưa tồn tại (chạy khi server khởi động lần đầu). 
+ * Tạo bảng nếu chưa tồn tại.
+ * An toàn để gọi nhiều lần nhờ CREATE TABLE IF NOT EXISTS.
  */
 export async function ensureTables() {
+  const sql = getSql();
+
   await sql`
     CREATE TABLE IF NOT EXISTS conversations (
       id          TEXT         PRIMARY KEY,

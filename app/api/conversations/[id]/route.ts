@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sql, ensureTables } from '@/lib/db';
+import { getSql, ensureTables } from '@/lib/db';
 
 // PUT /api/conversations/[id] — cập nhật messages + title
 export async function PUT(
@@ -8,19 +8,18 @@ export async function PUT(
 ) {
   try {
     await ensureTables();
+    const sql = getSql();
 
     const { id } = await params;
     const { messages } = await req.json() as {
       messages: { id: string; role: string; content: string; createdAt: string }[];
     };
 
-    // Tính lại title từ tin nhắn user đầu tiên nếu chưa có
     const firstUser = messages.find((m) => m.role === 'user');
     const titleFromMsg = firstUser
       ? firstUser.content.slice(0, 45) + (firstUser.content.length > 45 ? '...' : '')
       : null;
 
-    // Cập nhật title (chỉ khi title hiện tại là mặc định) + updated_at
     await sql`
       UPDATE conversations
       SET
@@ -33,7 +32,6 @@ export async function PUT(
       WHERE id = ${id} AND user_id = 'admin'
     `;
 
-    // Xoá messages cũ và insert lại toàn bộ (đơn giản nhất cho dự án nhỏ)
     await sql`DELETE FROM messages WHERE conversation_id = ${id}`;
 
     if (messages.length > 0) {
@@ -66,6 +64,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const sql = getSql();
     const { id } = await params;
 
     await sql`

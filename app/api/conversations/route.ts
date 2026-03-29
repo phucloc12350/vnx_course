@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { sql, ensureTables } from '@/lib/db';
+import { getSql, ensureTables } from '@/lib/db';
 
 // GET /api/conversations — lấy danh sách conversations + messages
 export async function GET() {
   try {
     await ensureTables();
+    const sql = getSql();
 
     const rows = await sql`
       SELECT
@@ -42,6 +43,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     await ensureTables();
+    const sql = getSql();
 
     const { id, title } = await req.json();
 
