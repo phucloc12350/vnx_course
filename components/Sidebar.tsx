@@ -6,6 +6,7 @@ import {
   MessageOutlined,
   ReadOutlined,
   LogoutOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -17,9 +18,8 @@ const AppSidebar = () => {
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   let activePage = 'co-minh';
-  if (pathname.includes('/tu-dien-co-lanh')) {
-    activePage = 'tu-dien';
-  }
+  if (pathname.includes('/tu-dien-co-lanh')) activePage = 'tu-dien';
+  if (pathname.includes('/kieu-gia-xang')) activePage = 'gia-xang';
 
   const handleLogout = async () => {
     setLogoutLoading(true);
@@ -67,6 +67,8 @@ const AppSidebar = () => {
               router.push('/chat-co-minh');
             } else if (e.key === 'tu-dien') {
               router.push('/tu-dien-co-lanh');
+            } else if (e.key === 'gia-xang') {
+              router.push('/kieu-gia-xang');
             }
           }}
           items={[
@@ -79,6 +81,11 @@ const AppSidebar = () => {
               key: 'tu-dien',
               icon: <ReadOutlined />,
               label: 'Từ Điển Cô Lành',
+            },
+            {
+              key: 'gia-xang',
+              icon: <ThunderboltOutlined style={{ color: '#fa8c16' }} />,
+              label: '⛽ Kiều Giá Xăng',
             },
           ]}
         />
