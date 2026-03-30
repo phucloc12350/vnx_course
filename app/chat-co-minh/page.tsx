@@ -75,7 +75,7 @@ export default function ChatPage() {
       : [];
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Wrapper flex: 1 để ChatWindow fill chiều ngang còn lại */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <ChatWindow

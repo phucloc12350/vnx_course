@@ -106,7 +106,7 @@ export default function DictionaryWindow() {
           flex: 1,
           overflowY: 'auto',
           padding: '32px 16px',
-          maxHeight: 'calc(100vh - 69px)',
+          maxHeight: '100%',
         }}
       >
         <div style={{ maxWidth: 800, margin: '0 auto' }}>

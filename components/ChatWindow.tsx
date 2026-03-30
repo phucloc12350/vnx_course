@@ -97,7 +97,7 @@ export default function ChatWindow({ initialMessages, onMessagesUpdate }: ChatWi
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh', 
+        height: '100%',
         backgroundColor: '#f0f2f5',
       }}
     >

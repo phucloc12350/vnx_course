@@ -156,7 +156,7 @@ export default function KieuGiaXangPage() {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#fffbe6' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#fffbe6' }}>
       {/* Header */}
       <div
         style={{
@@ -180,13 +180,6 @@ export default function KieuGiaXangPage() {
             </Text>
           </div>
         </div>
-        <Tag
-          icon={<ThunderboltOutlined />}
-          color="gold"
-          style={{ borderRadius: 20, fontWeight: 600 }}
-        >
-          AI Tools
-        </Tag>
       </div>
 
       {/* Messages */}

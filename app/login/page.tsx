@@ -22,6 +22,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      localStorage.setItem('vnx-username', values.username);
       messageApi.success('Chào mừng trở lại! 👋');
       setTimeout(() => router.push('/'), 800);
     } catch (err: any) {
