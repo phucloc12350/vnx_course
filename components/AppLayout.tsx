@@ -10,7 +10,7 @@ const { Content } = Layout;
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   if (pathname === '/login') {
     return <>{children}</>;

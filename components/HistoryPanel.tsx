@@ -13,6 +13,7 @@ interface HistoryPanelProps {
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  collapsed?: boolean;
 }
 
 function formatDate(iso: string): string {
@@ -30,17 +31,20 @@ export default function HistoryPanel({
   onSelect,
   onNew,
   onDelete,
+  collapsed = false,
 }: HistoryPanelProps) {
   return (
     <div
       style={{
-        width: 260,
+        width: collapsed ? 0 : 260,
         flexShrink: 0,
-        borderLeft: '1px solid #f0f0f0',
+        borderLeft: collapsed ? 'none' : '1px solid #f0f0f0',
         background: '#fafafa',
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
+        overflow: 'hidden',
+        transition: 'width 0.2s ease',
       }}
     >
       {/* Header */}

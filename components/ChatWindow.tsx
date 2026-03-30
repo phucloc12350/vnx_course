@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
 import ReactMarkdown from 'react-markdown';
 import { Input, Button, Avatar, Typography, Modal, Select } from 'antd';
-import { UserOutlined, RobotOutlined, SendOutlined, SettingOutlined } from '@ant-design/icons';
+import { UserOutlined, RobotOutlined, SendOutlined, SettingOutlined, HistoryOutlined } from '@ant-design/icons';
 import { useAppContext } from '@/context/AppContext';
 
 const { Title, Text } = Typography;
@@ -45,9 +45,11 @@ const botMarkdownComponents = {
 interface ChatWindowProps {
   initialMessages?: any[];
   onMessagesUpdate?: (messages: any[]) => void;
+  historyCollapsed?: boolean;
+  onToggleHistory?: () => void;
 }
 
-export default function ChatWindow({ initialMessages, onMessagesUpdate }: ChatWindowProps = {}) {
+export default function ChatWindow({ initialMessages, onMessagesUpdate, historyCollapsed, onToggleHistory }: ChatWindowProps = {}) {
   const { level, setLevel, weakness, setWeakness } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -116,14 +118,25 @@ export default function ChatWindow({ initialMessages, onMessagesUpdate }: ChatWi
         <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
           Cô Minh English
         </Title>
-        <Button 
-          type="default" 
-          icon={<SettingOutlined />} 
-          onClick={() => setIsModalOpen(true)}
-          style={{ borderRadius: '8px' }}
-        >
-          Trình độ: {level.split(' ')[0]}
-        </Button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button
+            type="default"
+            icon={<SettingOutlined />}
+            onClick={() => setIsModalOpen(true)}
+            style={{ borderRadius: '8px' }}
+          >
+            Trình độ: {level.split(' ')[0]}
+          </Button>
+          {onToggleHistory && (
+            <Button
+              type={historyCollapsed ? 'default' : 'primary'}
+              icon={<HistoryOutlined />}
+              onClick={onToggleHistory}
+              style={{ borderRadius: '8px' }}
+              title={historyCollapsed ? 'Xem lịch sử' : 'Ẩn lịch sử'}
+            />
+          )}
+        </div>
       </div>
 
       {/* Messages/Empty State area */}

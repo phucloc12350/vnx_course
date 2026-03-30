@@ -62,14 +62,14 @@ export default function AppHeader({ collapsed, onToggle }: AppHeaderProps) {
           size={32}
           style={{ backgroundColor: '#1890ff', flexShrink: 0 }}
         />
-        <Space size={4} direction="vertical" style={{ lineHeight: 1.2 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
           <Text type="secondary" style={{ fontSize: 11, display: 'block', lineHeight: 1 }}>
             Xin chào,
           </Text>
-          <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1 }}>
+          <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1, marginTop: 2 }}>
             {username}
           </Text>
-        </Space>
+        </div>
         <Divider type="vertical" style={{ margin: '0 4px' }} />
         <Button
           icon={<LogoutOutlined />}

@@ -19,6 +19,8 @@ export default function ChatPage() {
     deleteConversation,
   } = useChatHistory();
 
+  const [historyCollapsed, setHistoryCollapsed] = useState(true);
+
   /**
    * sessionKey điều khiển khi nào ChatWindow remount:
    * - Chỉ thay đổi khi user BẤM "Chat mới" hoặc CHỌN conversation cũ
@@ -82,6 +84,8 @@ export default function ChatPage() {
           key={sessionKey}
           initialMessages={initialMessages}
           onMessagesUpdate={handleMessagesUpdate}
+          historyCollapsed={historyCollapsed}
+          onToggleHistory={() => setHistoryCollapsed((v) => !v)}
         />
       </div>
 
@@ -91,6 +95,7 @@ export default function ChatPage() {
         onSelect={handleSelectConv}
         onNew={handleNewChat}
         onDelete={deleteConversation}
+        collapsed={historyCollapsed}
       />
     </div>
   );
