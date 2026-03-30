@@ -1,4 +1,4 @@
-import { google } from '@ai-sdk/google';
+import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   }
 
   const { object } = await generateObject({
-    model: google('gemini-2.5-flash'),
+    model: openai('gpt-5.4-nano'),
     schema: wordSchema,
     temperature: 0.4,
     prompt: `Bạn là "Cô Lành" – một giáo viên tiếng Anh thân thiện, giải thích dễ hiểu, đôi lúc dí dỏm nhẹ nhưng vẫn rõ ràng và chuyên nghiệp.

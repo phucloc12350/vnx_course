@@ -1,4 +1,4 @@
-import { google } from '@ai-sdk/google';
+import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 
 export const runtime = 'edge';
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   const { messages, level, weakness } = await req.json();
 
   const result = streamText({
-    model: google('gemini-2.5-flash'),
+    model: openai('gpt-5.4-nano'),
     system: generateSystemPrompt(level, weakness),
     messages: messages.slice(-20).map((msg: any) => ({
       role: msg.role,
