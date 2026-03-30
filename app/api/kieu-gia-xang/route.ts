@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { streamText, stepCountIs } from 'ai';
+import { streamText, stepCountIs, convertToModelMessages } from 'ai';
 import { z } from 'zod';
 
 // ─── HTML → plain text ────────────────────────────────────────────────────────
@@ -175,7 +175,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: openai('gpt-5.4-nano'),
     system: SYSTEM_PROMPT,
-    messages: messages.slice(-20),
+    messages: await convertToModelMessages(messages.slice(-20)),
     stopWhen: stepCountIs(5),
     tools: {
       get_fuel_prices: {

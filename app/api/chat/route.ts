@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { streamText } from 'ai';
+import { streamText, convertToModelMessages } from 'ai';
 
 export const runtime = 'edge';
 
@@ -35,10 +35,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: openai('gpt-5.4-nano'),
     system: generateSystemPrompt(level, weakness),
-    messages: messages.slice(-20).map((msg: any) => ({
-      role: msg.role,
-      content: msg.content || (msg.parts ? msg.parts.map((p: any) => p.text || '').join('') : '')
-    })),
+    messages: await convertToModelMessages(messages.slice(-20)),
   });
 
   // Trả về luồng dữ liệu dưới dạng UIMessageStreamResponse phù hợp với giao diện useChat
