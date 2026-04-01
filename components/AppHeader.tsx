@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, Space, Typography, Avatar, Divider } from 'antd';
+import { Button, Space, Typography, Avatar } from 'antd';
 import {
   LogoutOutlined,
   UserOutlined,
@@ -70,7 +70,7 @@ export default function AppHeader({ collapsed, onToggle }: AppHeaderProps) {
             {username}
           </Text>
         </div>
-        <Divider type="vertical" style={{ margin: '0 4px' }} />
+        <div style={{ width: 1, height: 20, background: '#e8e8e8', margin: '0 4px' }} />
         <Button
           icon={<LogoutOutlined />}
           danger

@@ -12,6 +12,8 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ThunderboltOutlined,
+  DownOutlined,
+  UpOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -19,106 +21,245 @@ const { Title, Text } = Typography;
 // Transport cố định — không tạo lại mỗi render
 const transport = new DefaultChatTransport({ api: '/api/kieu-gia-xang' });
 
-// ─── Render tool invocation ───────────────────────────────────────────────────
-function ToolBadge({ toolInvocation }: { toolInvocation: any }) {
-  const { toolName, state } = toolInvocation;
-
-  const config: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-    get_fuel_prices: {
-      label: 'Kiểm tra giá xăng PVOIL',
-      icon: '⛽',
-      color: '#fa8c16',
-    },
-    send_discord_report: {
-      label: 'Gửi báo cáo Discord',
-      icon: '📢',
-      color: '#722ed1',
-    },
-  };
-
-  const cfg = config[toolName] ?? { label: toolName, icon: '🔧', color: '#1890ff' };
-
-  if (state === 'call' || state === 'partial-call') {
-    return (
+// ─── Block hiển thị INPUT hoặc OUTPUT ────────────────────────────────────────
+function IOBlock({
+  label,
+  accentColor,
+  children,
+}: {
+  label: string;
+  accentColor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ borderTop: '1px solid #f0f0f0' }}>
       <div
         style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 8,
-          background: '#fff7e6',
-          border: `1px solid ${cfg.color}40`,
-          borderRadius: 10,
-          padding: '6px 12px',
-          marginBottom: 6,
-          fontSize: 13,
+          padding: '3px 12px',
+          background: '#f5f5f5',
+          borderLeft: `3px solid ${accentColor}`,
         }}
       >
-        <Spin indicator={<LoadingOutlined style={{ color: cfg.color, fontSize: 14 }} />} />
-        <span style={{ color: cfg.color }}>
-          {cfg.icon} Đang {cfg.label.toLowerCase()}...
-        </span>
+        <Text style={{ fontSize: 10, fontWeight: 700, color: '#8c8c8c', letterSpacing: 1 }}>
+          {label}
+        </Text>
       </div>
-    );
-  }
+      {children}
+    </div>
+  );
+}
 
-  const hasError = toolInvocation.result?.error;
+// ─── Bảng giá từ data tool output ────────────────────────────────────────────
+function PriceTable({ output }: { output: any }) {
+  if (!output?.prices || typeof output.prices !== 'object') return null;
+  const entries = Object.entries(output.prices as Record<string, string>);
+  if (entries.length === 0) return null;
+
   return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        background: hasError ? '#fff2f0' : '#f6ffed',
-        border: `1px solid ${hasError ? '#ffa39e' : '#b7eb8f'}`,
-        borderRadius: 10,
-        padding: '6px 12px',
-        marginBottom: 6,
-        fontSize: 13,
-      }}
-    >
-      {hasError ? (
-        <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
-      ) : (
-        <CheckCircleOutlined style={{ color: '#52c41a' }} />
+    <div style={{ background: '#fff' }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: 'linear-gradient(90deg,#fa8c16,#ffa940)' }}>
+              <th style={{ padding: '8px 14px', textAlign: 'left', color: '#fff', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                Loại nhiên liệu
+              </th>
+              <th style={{ padding: '8px 14px', textAlign: 'right', color: '#fff', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                Giá (đ/lít)
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map(([name, price], i) => (
+              <tr
+                key={i}
+                style={{
+                  background: i % 2 === 0 ? '#fff' : '#fffbe6',
+                  borderBottom: '1px solid #ffe7ba',
+                }}
+              >
+                <td style={{ padding: '7px 14px', color: '#262626' }}>{name}</td>
+                <td style={{ padding: '7px 14px', textAlign: 'right', fontWeight: 600, color: '#d46b08', fontFamily: 'monospace' }}>
+                  {String(price).replace(' đ/lít', '')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── OUTPUT: raw JSON với URL tự động thành link ─────────────────────────────
+function ToolOutputContent({ text }: { text: string }) {
+  return (
+    <pre style={{
+      margin: 0, padding: '8px 12px', fontSize: 12, fontFamily: 'monospace',
+      background: '#fafafa', color: '#262626', whiteSpace: 'pre-wrap',
+      wordBreak: 'break-all', maxHeight: 300, overflowY: 'auto',
+    }}>
+      {text}
+    </pre>
+  );
+}
+
+// ─── Render tool invocation (AI SDK v6) ──────────────────────────────────────
+// part.type = 'tool-{name}', fields: state, input, output (NOT toolInvocation/args/result)
+function ToolBadge({ part }: { part: any }) {
+  const [open, setOpen] = useState(true);
+
+  // 'tool-gia_xang' → 'gia_xang'
+  const toolName: string = part?.type === 'dynamic-tool'
+    ? (part?.toolName ?? 'tool')
+    : (part?.type?.startsWith('tool-') ? part.type.slice(5) : (part?.toolName ?? 'tool'));
+
+  const state = part?.state ?? '';
+
+  const config: Record<string, { label: string; color: string }> = {
+    gia_xang:            { label: 'gia_xang',            color: '#fa8c16' },
+    send_discord_report: { label: 'send_discord_report',  color: '#722ed1' },
+  };
+  const cfg = config[toolName] ?? { label: toolName, color: '#1890ff' };
+
+  // AI SDK v6 states
+  const isLoading = state === 'input-streaming' || state === 'input-available';
+  const isDone    = state === 'output-available';
+  const hasError  = state === 'output-error';
+
+  const outputText = part?.output != null
+    ? (typeof part.output === 'string' ? part.output : JSON.stringify(part.output, null, 2))
+    : (part?.errorText ?? '');
+
+  const bodyVisible = isLoading || open;
+
+  return (
+    <div style={{
+      background: '#fff',
+      border: `1px solid ${hasError ? '#ffa39e' : isLoading ? '#ffd591' : '#d9f7be'}`,
+      borderRadius: 10,
+      marginBottom: 8,
+      overflow: 'hidden',
+      fontSize: 13,
+      maxWidth: 580,
+    }}>
+      {/* ── Header ─────────────────────────────────────── */}
+      <div
+        onClick={() => { if (isDone || hasError) setOpen((v) => !v); }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '7px 12px',
+          cursor: (isDone || hasError) ? 'pointer' : 'default',
+          background: isLoading ? '#fffbe6' : hasError ? '#fff2f0' : '#f6ffed',
+          userSelect: 'none',
+        }}
+      >
+        {isLoading ? (
+          <Spin indicator={<LoadingOutlined style={{ color: cfg.color, fontSize: 12 }} />} />
+        ) : hasError ? (
+          <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 13 }} />
+        ) : (
+          <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 13 }} />
+        )}
+        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#595959', flex: 1 }}>
+          {cfg.label}
+        </span>
+        {isLoading ? (
+          <span style={{ color: cfg.color, fontSize: 11 }}>đang gọi…</span>
+        ) : hasError ? (
+          <span style={{ color: '#ff4d4f', fontSize: 11 }}>lỗi</span>
+        ) : (
+          <span style={{ color: '#8c8c8c', fontSize: 11 }}>
+            {open ? <UpOutlined /> : <DownOutlined />}
+          </span>
+        )}
+      </div>
+
+      {/* ── OUTPUT khi tool chạy xong ─────────────────── */}
+      {bodyVisible && (isDone || hasError) && (
+        <IOBlock label="OUTPUT" accentColor={hasError ? '#ff4d4f' : '#52c41a'}>
+          <ToolOutputContent text={outputText} />
+        </IOBlock>
       )}
-      <span style={{ color: hasError ? '#ff4d4f' : '#389e0d' }}>
-        {cfg.icon} {hasError ? `Lỗi: ${toolInvocation.result.error}` : `${cfg.label} thành công`}
-      </span>
+
+      {/* ── OUTPUT skeleton khi đang chờ ──────────────── */}
+      {isLoading && (
+        <IOBlock label="OUTPUT" accentColor="#d9d9d9">
+          <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Spin indicator={<LoadingOutlined style={{ color: '#bfbfbf', fontSize: 12 }} />} />
+            <Text type="secondary" style={{ fontSize: 12 }}>đang chờ kết quả…</Text>
+          </div>
+        </IOBlock>
+      )}
     </div>
   );
 }
 
 // ─── Message bubbles ──────────────────────────────────────────────────────────
 const mdComponents = {
-  p: ({ node: _n, ...props }: any) => <div style={{ marginBottom: 4 }} {...props} />,
+  p: ({ node: _n, ...props }: any) => <div style={{ marginBottom: 6 }} {...props} />,
   strong: ({ node: _n, ...props }: any) => (
     <strong style={{ color: '#d46b08', fontWeight: 700 }} {...props} />
   ),
-  table: ({ node: _n, ...props }: any) => (
-    <table
-      style={{
-        borderCollapse: 'collapse',
-        marginTop: 8,
-        fontSize: 13,
-        width: '100%',
-      }}
+  em: ({ node: _n, ...props }: any) => (
+    <em style={{ color: '#8c8c8c', fontSize: 12 }} {...props} />
+  ),
+  a: ({ node: _n, ...props }: any) => (
+    <a
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ color: '#1890ff', textDecoration: 'underline', fontWeight: 500 }}
       {...props}
     />
+  ),
+  table: ({ node: _n, ...props }: any) => (
+    <div style={{ overflowX: 'auto', margin: '10px 0' }}>
+      <table
+        style={{
+          borderCollapse: 'collapse',
+          fontSize: 14,
+          width: '100%',
+          borderRadius: 8,
+          overflow: 'hidden',
+        }}
+        {...props}
+      />
+    </div>
+  ),
+  thead: ({ node: _n, ...props }: any) => (
+    <thead style={{ background: 'linear-gradient(90deg,#fa8c16,#ffa940)', color: '#fff' }} {...props} />
   ),
   th: ({ node: _n, ...props }: any) => (
     <th
       style={{
-        border: '1px solid #ffd591',
-        padding: '4px 10px',
-        background: '#fff7e6',
+        padding: '8px 14px',
         textAlign: 'left',
+        fontWeight: 700,
+        fontSize: 13,
+        letterSpacing: 0.3,
+        color: '#fff',
+        whiteSpace: 'nowrap',
       }}
+      {...props}
+    />
+  ),
+  tbody: ({ node: _n, ...props }: any) => <tbody {...props} />,
+  tr: ({ node: _n, ...props }: any) => (
+    <tr
+      style={{ borderBottom: '1px solid #ffe7ba', transition: 'background 0.15s' }}
+      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = '#fff7e6')}
+      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
       {...props}
     />
   ),
   td: ({ node: _n, ...props }: any) => (
     <td
-      style={{ border: '1px solid #ffe7ba', padding: '4px 10px' }}
+      style={{
+        padding: '8px 14px',
+        fontSize: 14,
+        color: '#262626',
+        verticalAlign: 'middle',
+      }}
       {...props}
     />
   ),
@@ -127,6 +268,15 @@ const mdComponents = {
 const userMdComponents = {
   p: ({ node: _n, ...props }: any) => <div style={{ marginBottom: 4 }} {...props} />,
 };
+
+// Khi có pricesOutput → override ul để render PriceTable thay danh sách giá
+function createMdComponents(pricesOutput?: any) {
+  if (!pricesOutput?.prices) return mdComponents;
+  return {
+    ...mdComponents,
+    ul: () => <PriceTable output={pricesOutput} />,
+  };
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function KieuGiaXangPage() {
@@ -262,39 +412,48 @@ export default function KieuGiaXangPage() {
                     </Avatar>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {/* Tool invocation badges */}
-                      {!isUser &&
-                        msg.parts
-                          ?.filter((p: any) => p.type === 'tool-invocation')
-                          .map((p: any, i: number) => (
-                            <ToolBadge key={i} toolInvocation={p.toolInvocation} />
-                          ))}
-
-                      {/* Text content */}
-                      {msg.parts?.some((p: any) => p.type === 'text' && p.text?.trim()) && (
-                        <div
-                          style={{
-                            padding: '10px 16px',
-                            borderRadius: isUser ? '18px 4px 18px 18px' : '4px 18px 18px 18px',
-                            backgroundColor: isUser ? '#1890ff' : '#ffffff',
-                            color: isUser ? '#fff' : '#262626',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-                            lineHeight: 1.65,
-                            border: isUser ? 'none' : '1px solid #ffe7ba',
-                          }}
-                        >
-                          {msg.parts
-                            ?.filter((p: any) => p.type === 'text' && p.text?.trim())
-                            .map((p: any, i: number) => (
-                              <ReactMarkdown
-                                key={i}
-                                components={isUser ? userMdComponents : mdComponents}
-                              >
+                      {/* Render parts theo đúng thứ tự: tool → text → tool → text ... */}
+                      {msg.parts?.map((p: any, i: number) => {
+                        // AI SDK v6: type = 'tool-{name}' hoặc 'dynamic-tool'
+                        if (!isUser && (p.type?.startsWith('tool-') || p.type === 'dynamic-tool')) {
+                          return <ToolBadge key={i} part={p} />;
+                        }
+                        if (p.type === 'text' && p.text?.trim()) {
+                          // Tìm part gia_xang gần nhất trước text này để lấy data bảng giá
+                          const partsArr: any[] = msg.parts ?? [];
+                          const prevGiaXang = partsArr
+                            .slice(0, i)
+                            .reverse()
+                            .find((pp: any) =>
+                              pp.type === 'tool-gia_xang' &&
+                              pp.state === 'output-available' &&
+                              pp.output?.prices
+                            );
+                          const aiMdComponents = isUser
+                            ? userMdComponents
+                            : createMdComponents((prevGiaXang as any)?.output);
+                          return (
+                            <div
+                              key={i}
+                              style={{
+                                padding: '10px 16px',
+                                borderRadius: isUser ? '18px 4px 18px 18px' : '4px 18px 18px 18px',
+                                backgroundColor: isUser ? '#1890ff' : '#ffffff',
+                                color: isUser ? '#fff' : '#262626',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                                lineHeight: 1.65,
+                                border: isUser ? 'none' : '1px solid #ffe7ba',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <ReactMarkdown components={aiMdComponents}>
                                 {p.text}
                               </ReactMarkdown>
-                            ))}
-                        </div>
-                      )}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
                     </div>
                   </div>
                 </div>

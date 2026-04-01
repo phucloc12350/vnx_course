@@ -23,31 +23,43 @@ function htmlToText(html: string): string {
 }
 
 // ─── Trích xuất giá từ plain text ────────────────────────────────────────────
-type FuelItem = { name: string; price: string; unit: string };
+type FuelItem = { name: string; price: string };
 
 function extractPrices(text: string): FuelItem[] {
   const results: FuelItem[] = [];
   const seen = new Set<string>();
 
   const patterns: [string, RegExp][] = [
-    ['Xăng RON 95-III',    /RON\s*95[-–\s]*III[^0-9]*([0-9]{2,3}[.,][0-9]{3})/i],
-    ['Xăng E5 RON 92-II',  /E5\s*RON\s*92[-–\s]*II[^0-9]*([0-9]{2,3}[.,][0-9]{3})/i],
-    ['Dầu Diesel 0.05S-II',/[Dd]iesel\s*0\.05S[-–\s]*II[^0-9]*([0-9]{2,3}[.,][0-9]{3})/i],
-    ['Dầu Diesel',         /[Dd]iesel[^0-9\n]*([0-9]{2,3}[.,][0-9]{3})/i],
-    ['Dầu Hỏa',            /[Dd]ầu\s*h[oỏ]a[^0-9]*([0-9]{2,3}[.,][0-9]{3})/i],
-    ['Dầu Mazut',          /[Mm]azut[^0-9]*([0-9]{2,3}[.,][0-9]{3})/i],
+    ['Xăng RON 95-III',      /(?<!E10\s*)RON\s*95[-–\s]*III[^0-9\n]*([0-9]{2,3}[.,][0-9]{3})/i],
+    ['Xăng E10 RON 95-III',  /E10\s*RON\s*95[-–\s]*III[^0-9\n]*([0-9]{2,3}[.,][0-9]{3})/i],
+    ['Xăng E5 RON 92-II',    /E5\s*RON\s*92[-–\s]*II[^0-9\n]*([0-9]{2,3}[.,][0-9]{3})/i],
+    ['Dầu DO 0,05S-II',      /[Dd][Oo]\s*0[,.]05S[-–\s]*II[^0-9\n]*([0-9]{2,3}[.,][0-9]{3})/i],
+    ['Dầu DO 0,001S-V',      /[Dd][Oo]\s*0[,.]001S[-–\s]*V[^0-9\n]*([0-9]{2,3}[.,][0-9]{3})/i],
+    ['Dầu Hỏa',              /[Dd]ầu\s*h[oỏ]a[^0-9\n]*([0-9]{2,3}[.,][0-9]{3})/i],
+    ['Dầu Mazut',            /[Mm]azut[^0-9\n]*([0-9]{2,3}[.,][0-9]{3})/i],
   ];
 
   for (const [name, re] of patterns) {
-    const baseName = name.split(' ')[0] + ' ' + (name.split(' ')[1] ?? '');
-    if (seen.has(baseName)) continue;
+    if (seen.has(name)) continue;
     const m = text.match(re);
     if (m) {
-      results.push({ name, price: m[1], unit: 'đồng/lít' });
-      seen.add(baseName);
+      // Chỉ giữ lại chữ số và dấu phân cách, loại bỏ mọi ký tự lạ
+      const cleanPrice = m[1].replace(/[^\d.,]/g, '').trim();
+      if (cleanPrice) {
+        results.push({ name, price: cleanPrice });
+        seen.add(name);
+      }
     }
   }
   return results;
+}
+
+// ─── Format timestamp hiện tại ───────────────────────────────────────────────
+function nowVN(): string {
+  const d = new Date();
+  const hh = d.getHours().toString().padStart(2, '0');
+  const mm = d.getMinutes().toString().padStart(2, '0');
+  return `${hh}:${mm} ngày ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
 }
 
 // ─── Tool 1: scrape PVOIL ────────────────────────────────────────────────────
@@ -76,13 +88,17 @@ async function scrapePvoilPrices() {
       listHtml.match(/href="(\/tin-gia-xang-dau\/[^"?#\s]+)"/) ??
       listHtml.match(/href="(\/[^"?#\s]+gia-xang[^"?#\s]*)"/i);
 
+    const listingUrl = 'https://www.pvoil.com.vn/tin-gia-xang-dau';
+
     if (!linkMatch) {
-      // Thử trực tiếp trên trang danh sách
       const txt = htmlToText(listHtml);
-      const prices = extractPrices(txt);
-      return prices.length > 0
-        ? { prices, source: 'https://www.pvoil.com.vn/tin-gia-xang-dau' }
-        : { rawExcerpt: txt.slice(0, 1800), source: 'https://www.pvoil.com.vn/tin-gia-xang-dau' };
+      const items = extractPrices(txt);
+      if (items.length > 0) {
+        const prices: Record<string, string> = {};
+        for (const item of items) prices[item.name] = `${item.price} đ/lít`;
+        return { success: true, update_time: nowVN(), prices, source: listingUrl };
+      }
+      return { success: false, rawExcerpt: txt.slice(0, 1800), source: listingUrl };
     }
 
     const articleUrl = `https://www.pvoil.com.vn${linkMatch[1]}`;
@@ -97,25 +113,20 @@ async function scrapePvoilPrices() {
     const articleHtml = await articleRes.text();
     const text = htmlToText(articleHtml);
 
-    // Trích xuất ngày hiệu lực
-    const dateMatch = text.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/);
-
-    const prices = extractPrices(text);
-    if (prices.length > 0) {
-      return { prices, effectiveFrom: dateMatch?.[1], source: articleUrl };
+    const items = extractPrices(text);
+    if (items.length > 0) {
+      const prices: Record<string, string> = {};
+      for (const item of items) prices[item.name] = `${item.price} đ/lít`;
+      return { success: true, update_time: nowVN(), prices, source: articleUrl };
     }
 
     // Fallback: trả về đoạn text thô cho AI tự phân tích
-    return {
-      rawExcerpt: text.slice(0, 2000),
-      effectiveFrom: dateMatch?.[1],
-      source: articleUrl,
-    };
+    return { success: false, rawExcerpt: text.slice(0, 2000), source: articleUrl };
   } catch (err: any) {
     if (err.name === 'TimeoutError' || err.name === 'AbortError') {
-      return { error: 'Trang PVOIL phản hồi quá chậm. Thử lại sau nhé!' };
+      return { success: false, error: 'Trang PVOIL phản hồi quá chậm. Thử lại sau nhé!' };
     }
-    return { error: `Không lấy được dữ liệu: ${err.message}` };
+    return { success: false, error: `Không lấy được dữ liệu: ${err.message}` };
   }
 }
 
@@ -154,15 +165,23 @@ const SYSTEM_PROMPT = `
 Bạn là "Chị Kiều" – chuyên gia theo dõi giá xăng dầu Việt Nam, phong cách hài hước, hay "than thở" nhưng vẫn chuyên nghiệp và nhiệt tình.
 
 HÀNH VI:
-- Khi user hỏi về giá xăng, giá dầu, hoặc bất cứ thứ gì liên quan → GỌI NGAY tool get_fuel_prices
-- Sau khi có dữ liệu, trình bày bảng giá rõ ràng bằng markdown, thêm bình luận hài hước về giá
-- Sau đó HỎI user: "Có muốn cô gửi báo cáo này lên Discord cho cả lớp cùng khóc không?" 
+- Khi user hỏi về giá xăng, giá dầu, hoặc bất cứ thứ gì liên quan → GỌI NGAY tool gia_xang
+- Sau khi có dữ liệu, trình bày theo đúng format bên dưới
+- Sau đó HỎI user: "Có muốn cô gửi báo cáo này lên Discord cho cả lớp cùng khóc không?"
 - Nếu user đồng ý → biên soạn nội dung bá đạo, GỌI tool send_discord_report
 - Xác nhận sau khi gửi thành công
 
+FORMAT BẮT BUỘC khi trình bày giá xăng (KHÔNG được in bảng markdown, bảng sẽ tự hiển thị):
+1. Dòng tiêu đề: "⛽ **Bảng giá xăng dầu** — cập nhật [update_time từ data]"
+2. Một câu bình luận hài hước về giá (ví dụ so sánh với tô phở, ly trà sữa, cảm xúc...)
+3. Dòng nguồn dạng markdown link, lấy URL thực từ field "source" trong data:
+   *Nguồn: [PVOIL (pvoil.com.vn)](URL_từ_field_source)*
+
+TUYỆT ĐỐI KHÔNG in bảng markdown (|---|) vào phần text trả lời — bảng đã được giao diện tự render.
+
 PHONG CÁCH:
 - Hay dùng: "Ối giời ơi...", "Thôi chết rồi...", "Đắt vậy mà vẫn phải đổ!"
-- Hay so sánh: "Tiền xăng hôm nay bằng X tô phở đó nhé"
+- So sánh vui: "Đổ đầy bình = X tô phở / Y ly trà sữa"
 - Gọi user là "bạn ơi" hoặc theo tên nếu biết
 - Dùng tiếng Việt hoàn toàn
 - Khi gặp lỗi kỹ thuật: báo lỗi rõ ràng và gợi ý cách khắc phục
@@ -178,7 +197,7 @@ export async function POST(req: Request) {
     messages: await convertToModelMessages(messages.slice(-20)),
     stopWhen: stepCountIs(5),
     tools: {
-      get_fuel_prices: {
+      gia_xang: {
         description:
           'Lấy bảng giá xăng dầu mới nhất từ PVOIL. ' +
           'Gọi tool này khi user hỏi về giá xăng, giá dầu hôm nay.',
